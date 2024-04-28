@@ -1,4 +1,4 @@
-# WP-Inspect: Identify WordPress File Changes In Seconds.
+# WP-Inspect: Investigate Hacked WordPress Instances
 
 ## Introduction
 
