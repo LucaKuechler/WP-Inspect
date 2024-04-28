@@ -16,4 +16,4 @@ The primary purpose of this tool is to aid in forensic investigations of WordPre
 
 ## Acknowledgments
 
-- Special thanks to @ym405nm for inspiring this project with his tool [wpforensics](https://github.com/ym405nm/wp-forensics).
+- Special thanks to @ym405nm for inspiring this project with his tool [wp-forensics](https://github.com/ym405nm/wp-forensics).
