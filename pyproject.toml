@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "wp-inspect"
+version = "0.1.0"
+description = "Identify changes made to WordPress files by comparing it to either the original source code from the internet or a backup."
+authors = ["Luca Kuechler <lucakuechler.business@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
