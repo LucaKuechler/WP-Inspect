@@ -6,8 +6,22 @@ authors = ["Luca Kuechler <lucakuechler.business@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
+pyfiglet = "^1.0.2"
+rich = "^13.7.1"
+termcolor = "^2.4.0"
+requests = "^2.31.0"
+click = "^8.1.7"
+click-help-colors = "^0.9.4"
 
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.1.0"
+mypy = "^1.10.0"
+black = "^24.4.2"
+isort = "^5.13.2"
+
+[tool.poetry.scripts]
+wpinspect = "wp_inspect.wp_inspect:main"
 
 [build-system]
 requires = ["poetry-core"]
