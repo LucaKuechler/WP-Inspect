@@ -389,7 +389,11 @@ class WordPressComperatorLocal(WordPressComperator):
         self, hacked_file_list: list[Path], backup_file_list: list[Path]
     ) -> None:
         """
+        Filter out files that are represented in the backup but not in the hacked
+        version of the program. Those are the deleted files by the attacker.
 
+        :param hacked_file_list: List of WordPress files.
+        :param backup_file_list: List of WordPress files.
         """
         s1 = {fp for fp in hacked_file_list}
         s2 = {fp for fp in backup_file_list}
