@@ -157,7 +157,7 @@ class WordPressComperatorWeb(WordPressComperator):
 
         current_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        new_tmp_folder = tmp_path / f"wp_forensics__{current_timestamp}"
+        new_tmp_folder = tmp_path.joinpath("wp_forensics__{}".format(current_timestamp))
 
         os.mkdir(new_tmp_folder)
 
