@@ -1,4 +1,4 @@
-from typing import Tuple, Any
+from typing import Tuple
 from pathlib import Path
 import os
 import hashlib
@@ -14,6 +14,9 @@ def get_timestamps_from_file(filepath: Path) -> Tuple[str, str, str]:
     :param filepath: Path to the file.
     :return: A tuple containing the last modified time, last accessed time, and creation time of the file.
     """
+    if not filepath.is_file():
+        return "", "", ""
+
     frmt = "%Y-%m-%d %H:%M:%S"
     lwt = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime(frmt)
     lat = datetime.fromtimestamp(os.path.getatime(filepath)).strftime(frmt)
@@ -28,6 +31,9 @@ def generate_virustotal_url(filepath: Path) -> str:
     :param filepath: Path to the file.
     :return: The VirusTotal URL for the file.
     """
+    if not filepath.is_file():
+        return ""
+
     hash_md5 = hashlib.md5()
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -37,14 +43,13 @@ def generate_virustotal_url(filepath: Path) -> str:
     return url
 
 
-def validate_wordpress_path(wp_path: str) -> Tuple[str, str]:
+def validate_wordpress_path(path: Path) -> Tuple[str, str]:
     """
     Validate a WordPress installation path.
 
     :param wp_path: Path to the WordPress installation.
     :return: A tuple containing the WordPress version and language.
     """
-    path = Path(wp_path)
 
     # if the given path is not a folder it can not be the wordpress instance
     if not path.is_dir():
@@ -64,12 +69,11 @@ def validate_wordpress_path(wp_path: str) -> Tuple[str, str]:
             if match_version:
                 version = match_version.group(1)
 
-        for line in v_file:
             match_language = re.search(
-                r'\$$wp_local_package\s*=\s*[\'"]([^\'"]+)[\'"]', line
+                r'\$wp_local_package\s*=\s*[\'"]([^\'"]+)[\'"]', line
             )
             if match_language:
-                language = match_language.group(1)[-2:]
+                language = match_language.group(1)
 
     if version == "":
         return "", ""
@@ -77,7 +81,7 @@ def validate_wordpress_path(wp_path: str) -> Tuple[str, str]:
     return version, language
 
 
-def get_file_list(wp_dir: str, parse_wp_upload=False) -> Any:
+def get_file_list(wp_dir: Path, parse_wp_upload=False) -> list[Path]:
     """
     Get the list of files in a WordPress directory.
 
@@ -85,7 +89,7 @@ def get_file_list(wp_dir: str, parse_wp_upload=False) -> Any:
     :param parse_wp_upload: Whether to parse WordPress upload directory.
     :return: The list of files in the WordPress directory.
     """
-    file_abs_list = glob.glob(wp_dir + "/**", recursive=True)
+    file_abs_list = glob.glob(str(wp_dir) + "/**", recursive=True)
     file_list = []
     for file_abs_path in file_abs_list:
 
@@ -96,11 +100,11 @@ def get_file_list(wp_dir: str, parse_wp_upload=False) -> Any:
             continue
 
         if parse_wp_upload:
-            file_list.append(file_abs_path.replace(wp_dir + "/", ""))
+            file_list.append(Path(file_abs_path.replace(str(wp_dir) + "/", "")))
             continue
 
         if "wp-content/" not in file_abs_path:
-            file_list.append(file_abs_path.replace(wp_dir + "/", ""))
+            file_list.append(Path(file_abs_path.replace(str(wp_dir) + "/", "")))
 
     return file_list
 
@@ -135,12 +139,14 @@ def is_file_binary(filename) -> bool:
     else:
         return False
 
-# def filter_out_extensions(filename: Path, extensions: List[]) -> None:
-#
-#     # check if given path is a real file
-#     if not filename.is_file():
-#         return
-#    
-#
 
+def is_file_ok(wp_backup_dir: Path, wp_relative_filepath: Path) -> Tuple[Path, bool]:
+    """
+    Helper method to check if a file is okay.
 
+    :param wpdir_relative_filepath: The relative filepath of the file.
+    :return: A tuple containing the file path and a boolean indicating if the file is okay.
+    """
+
+    downloaded_target_file = wp_backup_dir / wp_relative_filepath
+    return downloaded_target_file, downloaded_target_file.is_file()

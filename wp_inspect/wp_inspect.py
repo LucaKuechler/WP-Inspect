@@ -1,7 +1,9 @@
 import click
 from click_help_colors import HelpColorsGroup
+from pathlib import Path
 from pyfiglet import figlet_format
 from termcolor import colored
+from typing import Optional
 
 from .wordpress_comperator import (
     WordPressComperator,
@@ -19,7 +21,7 @@ def cli():
     pass
 
 
-def run_comparison(wpc: WordPressComperator, outpath: str):
+def run_comparison(wpc: WordPressComperator, outpath: Optional[Path]):
     """
     Identify changes made to WordPress files by comparing it to either the
     original source code from the internet or a backup.
@@ -37,9 +39,9 @@ def run_comparison(wpc: WordPressComperator, outpath: str):
 
 
 @cli.command()
-@click.argument("wordpress", type=str)
-@click.option("--csv", type=str, default="", help="Specify the output filepath.")
-def web(wordpress: str, csv: str):
+@click.argument("wordpress", type=Path)
+@click.option("--csv", type=Path, default=None, help="Specify the output filepath.")
+def web(wordpress: Path, csv: Optional[Path]):
     """
     Run comparison against the internet source code.
     """
@@ -51,10 +53,10 @@ def web(wordpress: str, csv: str):
 @click.option(
     "--full", is_flag=True, help="If specified the program will include all filetypes."
 )
-@click.option("--csv", type=str, default="", help="Specify the output filepath.")
-@click.argument("wordpress-backup", type=str)
-@click.argument("wordpress", type=str)
-def local(wordpress: str, wordpress_backup: str, csv: str, full: bool):
+@click.option("--csv", type=Path, default=None, help="Specify the output filepath.")
+@click.argument("wordpress-backup", type=Path)
+@click.argument("wordpress", type=Path)
+def local(wordpress: Path, wordpress_backup: Path, csv: Optional[Path], full: bool):
     """
     Run comparison against a local backup.
     """
