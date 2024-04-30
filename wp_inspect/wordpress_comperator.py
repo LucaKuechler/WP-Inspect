@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 from .utils import *
+import tarfile
+import shutil
 
 import requests
 from rich import print
@@ -69,7 +71,25 @@ class WordPressComperatorWeb(WordPressComperator):
 
         :param filepath: The filepath to export the results.
         """
-        pass
+        with open(filepath, "w") as file:
+            file.write(
+                "Action,File,CreationTime,LastWriteTime,LastAccessTime,VirusTotal\n"
+            )
+
+            for added in self.added:
+                file.write(
+                    f"Added,{added.get('filepath')},{added.get('CreationTime')},{added.get('LastWriteTime')},{added.get('LastAccessTime')},{added.get('VirusTotal')}\n"
+                )
+
+            for modified in self.modified:
+                file.write(
+                    f"Modified,{modified.get('filepath')},{modified.get('CreationTime')},{modified.get('LastWriteTime')},{modified.get('LastAccessTime')},{modified.get('VirusTotal')}\n"
+                )
+
+            for binary in self.binary:
+                file.write(
+                    f"Binary,{binary.get('filepath')},{binary.get('CreationTime')},{binary.get('LastWriteTime')},{binary.get('LastAccessTime')},{binary.get('VirusTotal')}\n"
+                )
 
     def show(self) -> None:
         """
@@ -80,16 +100,16 @@ class WordPressComperatorWeb(WordPressComperator):
             - Suspicous Files Found In User Upload
         """
         print(":green_square: Added Files:")
-        for file in self.added_dict:
-            print(file)
+        for file in self.added:
+            print(f"[white]{file.get('filepath')}[/white]")
 
         print("\n:yellow_square: Modified Files:")
-        for file in self.modified_dict:
-            print(file)
+        for file in self.modified:
+            print(f"[white]{file.get('filepath')}[/white]")
 
         print("\n:blue_square: Suspicous User Upload Files:")
-        for file in self.binary_dict:
-            print(file)
+        for file in self.binary:
+            print(f"[white]{file.get('filepath')}[/white]")
 
     def validate_paths(self) -> None:
         """
@@ -98,6 +118,8 @@ class WordPressComperatorWeb(WordPressComperator):
         self.wp_version, self.wp_language = validate_wordpress_path(
             self.wp_filepath_hacked
         )
+
+        print(":repeat_button: WP-Version: {} \n\n".format(self.wp_version))
 
     def _tmp_create(self) -> Path:
         """
@@ -179,9 +201,9 @@ class WordPressComperatorWeb(WordPressComperator):
         # create a list of all files within the hacked wordpress directory.
         wp_file_list = get_file_list(self.wp_filepath_hacked)
 
-        self.added_dict = []
-        self.modified_dict = []
-        self.binary_dict = []
+        self.added = []
+        self.modified = []
+        self.binary = []
 
         for filepath in wp_file_list:
             hacked_fp = Path(filepath)
@@ -192,11 +214,25 @@ class WordPressComperatorWeb(WordPressComperator):
             # if file exists in downloaded files
             tmp_fp, exists = self._is_file_ok(wpdir_relative_filepath)
 
+            # get timestamps
+            lwt, lat, ct = get_timestamps_from_file(hacked_fp)
+
+            # calculate file hash from hacked file
+            vt = generate_virustotal_url(hacked_fp)
+
             # the file does exist in the hacked wordpress files but
             # does not appear in the orignial ones than it has been
             # added by the owner or the hacker.
             if not exists:
-                self.added_dict.append(hacked_fp)
+                self.added.append(
+                    {
+                        "filepath": hacked_fp,
+                        "LastWriteTime": lwt,
+                        "LastAccessTime": lat,
+                        "CreationTime": ct,
+                        "VirusTotal": vt,
+                    },
+                )
                 continue
 
             # as we know file exists we should now check if they are equal
@@ -205,7 +241,15 @@ class WordPressComperatorWeb(WordPressComperator):
             if filecmp.cmp(hacked_fp, tmp_fp):
                 continue
 
-            self.modified_dict.append(hacked_fp)
+            self.modified.append(
+                {
+                    "filepath": hacked_fp,
+                    "LastWriteTime": lwt,
+                    "LastAccessTime": lat,
+                    "CreationTime": ct,
+                    "VirusTotal": vt,
+                },
+            )
 
         # the upload dir is special as the normal behavior is that people add files.
         # because the webfiles do not contain the user uploaded files, we do not check.
@@ -216,16 +260,32 @@ class WordPressComperatorWeb(WordPressComperator):
         for up_file in upload_file_list:
             target_file = wp_upload_dir + "/" + up_file
 
+            # get timestamps
+            lwt, lat, ct = get_timestamps_from_file(target_file)
+
+            # calculate file hash from hacked file
+            vt = generate_virustotal_url(target_file)
+
             if not is_file_binary(target_file):
-                self.binary_dict.append(wp_upload_dir + "/" + up_file)
+                self.binary.append(
+                    {
+                        "filepath": target_file,
+                        "LastWriteTime": lwt,
+                        "LastAccessTime": lat,
+                        "CreationTime": ct,
+                        "VirusTotal": vt,
+                    },
+                )
 
 
-class WordPressComperatorBackup(WordPressComperator):
+class WordPressComperatorLocal(WordPressComperator):
     """
     Concrete implementation of WordPress comparator for comparing a hacked WordPress installation with a backup.
     """
 
-    def __init__(self, wp_filepath_hacked: str, wp_filepath_backup: str) -> None:
+    def __init__(
+        self, wp_filepath_hacked: str, wp_filepath_backup: str, full: bool
+    ) -> None:
         """
         Constructor method.
 
@@ -234,6 +294,7 @@ class WordPressComperatorBackup(WordPressComperator):
         """
         self.wp_filepath_hacked = wp_filepath_hacked
         self.wp_filepath_backup = wp_filepath_backup
+        self.full = full
 
     def validate_paths(self) -> None:
         """
@@ -255,6 +316,7 @@ class WordPressComperatorBackup(WordPressComperator):
         :param wpdir_relative_filepath: The relative filepath of the file.
         :return: A tuple containing the file path and a boolean indicating if the file is okay.
         """
+
         downloaded_target_file = Path(self.wp_filepath_backup) / wpdir_relative_filepath
         return downloaded_target_file, downloaded_target_file.is_file()
 
@@ -279,6 +341,12 @@ class WordPressComperatorBackup(WordPressComperator):
 
         for fp in hacked_file_list:
             hacked_fp = Path(fp)
+
+            # exclude extensions that are most likly not dangerous
+            if not self.full:
+                lower_file_extension = hacked_fp.suffix.lower()
+                if lower_file_extension in [".png", ".jpg", ".log", ".pdf"]:
+                    continue
 
             # ../test-data/wordpress_hacked/wp-login.php -> wp-login.php
             wpdir_relative_filepath = fp.replace(self.wp_filepath_hacked, "")
@@ -334,6 +402,13 @@ class WordPressComperatorBackup(WordPressComperator):
             s2.add(wpdir_relative_filepath)
 
         for elem in list(s2 - s1):
+
+            # exclude extensions that are most likly not dangerous
+            if not self.full:
+                lower_file_extension = Path(elem).suffix.lower()
+                if lower_file_extension in [".png", ".jpg", ".log", ".pdf"]:
+                    continue
+
             self.deleted.append(
                 {
                     "filepath": self.wp_filepath_hacked + elem,
@@ -389,23 +464,3 @@ class WordPressComperatorBackup(WordPressComperator):
         print("\n:red_square: Deleted Files:")
         for file in self.deleted:
             print(f"[white]{file.get('filepath')}[/white]")
-
-
-class WordPressComperatorFactory:
-    """
-    Factory class for creating WordPress comparators.
-    """
-
-    def create_wpc(self, wp_filepath_hacked, wp_filepath_backup) -> WordPressComperator:
-        """
-        Method to create a WordPress comparator.
-
-        :param wp_filepath_hacked: The filepath of the hacked WordPress installation.
-        :param wp_filepath_backup: The filepath of the backup WordPress installation.
-        :return: A WordPress comparator instance.
-        """
-
-        if wp_filepath_backup:
-            return WordPressComperatorBackup(wp_filepath_hacked, wp_filepath_backup)
-
-        return WordPressComperatorWeb(wp_filepath_hacked)

@@ -134,3 +134,13 @@ def is_file_binary(filename) -> bool:
         return True
     else:
         return False
+
+# def filter_out_extensions(filename: Path, extensions: List[]) -> None:
+#
+#     # check if given path is a real file
+#     if not filename.is_file():
+#         return
+#    
+#
+
+

@@ -21,7 +21,7 @@ black = "^24.4.2"
 isort = "^5.13.2"
 
 [tool.poetry.scripts]
-wpinspect = "wp_inspect.wp_inspect:main"
+wpinspect = "wp_inspect.wp_inspect:cli"
 
 [build-system]
 requires = ["poetry-core"]
