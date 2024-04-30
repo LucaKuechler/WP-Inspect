@@ -7,6 +7,7 @@ from wp_inspect.utils import (
     generate_virustotal_url,
     get_timestamps_from_file,
     get_file_list,
+    is_file_ok,
 )
 
 
@@ -18,12 +19,15 @@ class TestValidateWordPressPath(unittest.TestCase):
         $wp_version = '6.5.2';
         $wp_local_package = 'de_DE';
         """
+
+        wp_path = Path("/path/to/wp")
+
         # Create a temporary directory with WordPress files
         with patch("builtins.open", mock_open(read_data=data)) as mock_file:
             with patch.object(Path, "is_file", return_value=True):
                 with patch.object(Path, "is_dir", return_value=True):
                     # Provide the path to the temporary directory
-                    wp_version, wp_language = validate_wordpress_path("/path/to/wp")
+                    wp_version, wp_language = validate_wordpress_path(wp_path)
 
         # Asset that the opened path include version.php as read only.
         mock_file.assert_called_with(
@@ -43,12 +47,15 @@ class TestValidateWordPressPath(unittest.TestCase):
         data = """
         $wp_version = '6.5.2';
         """
+
+        wp_path = Path("/path/to/wp")
+
         # Create a temporary directory with WordPress files
         with patch("builtins.open", mock_open(read_data=data)) as mock_file:
             with patch.object(Path, "is_file", return_value=True):
                 with patch.object(Path, "is_dir", return_value=True):
                     # Provide the path to the temporary directory
-                    wp_version, wp_language = validate_wordpress_path("/path/to/wp")
+                    wp_version, wp_language = validate_wordpress_path(wp_path)
 
         # Asset that the opened path include version.php as read only.
         mock_file.assert_called_with(
@@ -64,22 +71,24 @@ class TestValidateWordPressPath(unittest.TestCase):
         )  # Assuming language 'en' is found in version.php
 
     def test_invalid_path_not_directory(self):
+        invalid_wp_path = Path("/invalid/path")
+
         # Provide a non-existent path
         with patch.object(Path, "is_dir", return_value=False):
-            wp_version, wp_language = validate_wordpress_path("/invalid/path")
+            wp_version, wp_language = validate_wordpress_path(invalid_wp_path)
 
         # Assert that the returned values are empty strings
         self.assertEqual(wp_version, "")
         self.assertEqual(wp_language, "")
 
     def test_valid_path_but_no_wordpress_files_in_it(self):
+        non_wp_dir = Path("/path/to/non_wordpress_directory")
+
         # Create a temporary directory without WordPress files
         with patch.object(Path, "is_file", return_value=False):
             with patch.object(Path, "is_dir", return_value=True):
                 # Provide the path to the temporary directory
-                wp_version, wp_language = validate_wordpress_path(
-                    "/path/to/non_wordpress_directory"
-                )
+                wp_version, wp_language = validate_wordpress_path(non_wp_dir)
 
         # Assert that the returned values are empty strings
         self.assertEqual(wp_version, "")
@@ -161,14 +170,14 @@ class TestGetFileList(unittest.TestCase):
     )
     def test_get_file_list_normal_directory(self, mock_glob):
         # Provide a valid WordPress directory path
-        wp_dir = "/path/to/wp_dir"
+        wp_dir = Path("/path/to/wp_dir")
 
         # Call the function
         with patch.object(Path, "is_dir", return_value=False):
             file_list = get_file_list(wp_dir)
 
         # Assert that the file list contains the correct files
-        self.assertEqual(file_list, ["file1", "file2"])
+        self.assertEqual(file_list, [PosixPath("file1"), PosixPath("file2")])
 
     @patch(
         "glob.glob",
@@ -181,19 +190,22 @@ class TestGetFileList(unittest.TestCase):
     )
     def test_get_file_list_with_parse_wp_upload(self, mock_glob):
         # Provide a valid WordPress directory path
-        wp_dir = "/path/to/wp_dir"
+        wp_dir = Path("/path/to/wp_dir")
 
         # Call the function with parse_wp_upload=True
         with patch.object(Path, "is_dir", return_value=False):
             file_list = get_file_list(wp_dir, parse_wp_upload=True)
 
         # Assert that the file list contains the correct files
-        self.assertEqual(file_list, ["file1", "file2", "wp-content/file3"])
+        self.assertEqual(
+            file_list,
+            [PosixPath("file1"), PosixPath("file2"), PosixPath("wp-content/file3")],
+        )
 
     @patch("glob.glob", return_value=[])
     def test_get_file_list_empty_dir(self, mock_glob):
         # Provide a non-existent directory path
-        wp_dir = "/path/to/nonexistent/dir"
+        wp_dir = Path("/path/to/nonexistent/dir")
 
         # Call the function
         with patch.object(Path, "is_dir", return_value=False):
@@ -201,6 +213,33 @@ class TestGetFileList(unittest.TestCase):
 
         # Assert that the file list is empty
         self.assertEqual(file_list, [])
+
+
+class TestIsFileOk(unittest.TestCase):
+
+    def test_file_exists(self):
+        # Define test data
+        wp_backup_dir = Path("/tmp/wordpress/")
+        wp_relative_filepath = Path("wp-includes/config.php")
+
+        # Call the function
+        with patch.object(Path, "is_file", return_value=True):
+            file_path, is_ok = is_file_ok(wp_backup_dir, wp_relative_filepath)
+
+        self.assertEqual(PosixPath("/tmp/wordpress/wp-includes/config.php"), file_path)
+        self.assertTrue(is_ok)
+
+    def test_file_does_not_exist(self):
+        # Define test data
+        wp_backup_dir = Path("/tmp/wordpress/")
+        wp_relative_filepath = Path("wp-includes/config.php")
+
+        # Call the function
+        with patch.object(Path, "is_file", return_value=False):
+            file_path, is_ok = is_file_ok(wp_backup_dir, wp_relative_filepath)
+
+        self.assertEqual(PosixPath("/tmp/wordpress/wp-includes/config.php"), file_path)
+        self.assertFalse(is_ok)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ from wp_inspect.wordpress_comperator import (
     WordPressComperatorLocal,
 )
 
-
 class TestWordPressComperatorWeb(unittest.TestCase):
 
     def setUp(self):
@@ -76,39 +75,6 @@ class TestWordPressComperatorWeb(unittest.TestCase):
 
         # Check if the method returns the response data
         self.assertEqual(result, mock_response)
-
-
-class TestIsFileOk(unittest.TestCase):
-
-    def setUp(self):
-        # Create an instance of your class
-        self.obj = WordPressComperatorLocal("", "/path/to/backup/", False)
-
-    def test_is_file_ok_existing_file(self):
-        # Provide a valid file path
-        wpdir_relative_filepath = "wp-include/config.php"
-
-        # Call the method
-        with patch.object(Path, "is_file", return_value=True):
-            file_path, is_ok = self.obj._is_file_ok(wpdir_relative_filepath)
-
-        # Assert that the file path is correct and is_ok is True
-        self.assertEqual(file_path, Path("/path/to/backup/wp-include/config.php"))
-        self.assertTrue(is_ok)
-
-    def test_is_file_ok_nonexistent_file(self):
-        # Provide a non-existent file path
-        wpdir_relative_filepath = "wp-include/nonexistent_file.php"
-
-        # Call the method
-        with patch.object(Path, "is_file", return_value=False):
-            file_path, is_ok = self.obj._is_file_ok(wpdir_relative_filepath)
-
-        # Assert that the file path is correct and is_ok is False
-        self.assertEqual(
-            file_path, Path("/path/to/backup/wp-include/nonexistent_file.php")
-        )
-        self.assertFalse(is_ok)
 
 
 if __name__ == "__main__":
