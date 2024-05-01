@@ -1,15 +1,16 @@
 import filecmp
 import os
+import shutil
+import tarfile
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from typing import Any, NamedTuple
-from .utils import *
-import tarfile
-import shutil
 
 import requests
 from rich import print
+
+from .utils import *
 
 
 class OutputRow(NamedTuple):

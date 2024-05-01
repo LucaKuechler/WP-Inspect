@@ -1,15 +1,14 @@
-import click
-from click_help_colors import HelpColorsGroup
 from pathlib import Path
-from pyfiglet import figlet_format
-from termcolor import colored
 from typing import Optional
 
-from .wordpress_comperator import (
-    WordPressComperator,
-    WordPressComperatorLocal,
-    WordPressComperatorWeb,
-)
+import click
+from click_help_colors import HelpColorsGroup
+from pyfiglet import figlet_format
+from termcolor import colored
+
+from .wordpress_comperator import (WordPressComperator,
+                                   WordPressComperatorLocal,
+                                   WordPressComperatorWeb)
 
 
 @click.group(

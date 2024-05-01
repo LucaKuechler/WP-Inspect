@@ -1,11 +1,10 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import os
+import unittest
 from pathlib import Path
-from wp_inspect.wordpress_comperator import (
-    WordPressComperatorWeb,
-    WordPressComperatorLocal,
-)
+from unittest.mock import MagicMock, patch
+
+from wp_inspect.wordpress_comperator import (WordPressComperatorLocal,
+                                             WordPressComperatorWeb)
 
 
 class TestWordPressComperatorWeb(unittest.TestCase):

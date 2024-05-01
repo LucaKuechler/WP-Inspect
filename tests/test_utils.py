@@ -1,14 +1,11 @@
-import unittest
 import hashlib
+import unittest
 from pathlib import Path, PosixPath
-from unittest.mock import patch, mock_open
-from wp_inspect.utils import (
-    validate_wordpress_path,
-    generate_virustotal_url,
-    get_timestamps_from_file,
-    get_file_list,
-    is_file_ok,
-)
+from unittest.mock import mock_open, patch
+
+from wp_inspect.utils import (generate_virustotal_url, get_file_list,
+                              get_timestamps_from_file, is_file_ok,
+                              validate_wordpress_path)
 
 
 class TestValidateWordPressPath(unittest.TestCase):

@@ -1,10 +1,10 @@
-from typing import Tuple
-from pathlib import Path
-import os
-import hashlib
-import re
 import glob
+import hashlib
+import os
+import re
 from datetime import datetime
+from pathlib import Path
+from typing import Tuple
 
 
 def get_timestamps_from_file(filepath: Path) -> Tuple[str, str, str]:
