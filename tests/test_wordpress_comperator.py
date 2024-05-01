@@ -7,6 +7,7 @@ from wp_inspect.wordpress_comperator import (
     WordPressComperatorLocal,
 )
 
+
 class TestWordPressComperatorWeb(unittest.TestCase):
 
     def setUp(self):
