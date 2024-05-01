@@ -26,7 +26,7 @@ def run_comparison(wpc: WordPressComperator, outpath: Optional[Path]):
     Identify changes made to WordPress files by comparing it to either the
     original source code from the internet or a backup.
     """
-    print((colored(figlet_format("WP-Inspect", font="stop"), color="yellow")) + "\n")
+    print((colored(figlet_format("WP - Inspect", font="stop"), color="yellow")) + "\n")
 
     # Validate paths, compare installations, and show results
     wpc.validate_paths()
