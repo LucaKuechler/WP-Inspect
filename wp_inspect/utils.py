@@ -100,11 +100,11 @@ def get_file_list(wp_dir: Path, parse_wp_upload=False) -> list[Path]:
             continue
 
         if parse_wp_upload:
-            file_list.append(Path(file_abs_path.replace(str(wp_dir) + "/", "")))
+            file_list.append(Path(file_abs_path.replace(str(wp_dir) + "/", "", 1)))
             continue
 
         if "wp-content/" not in file_abs_path:
-            file_list.append(Path(file_abs_path.replace(str(wp_dir) + "/", "")))
+            file_list.append(Path(file_abs_path.replace(str(wp_dir) + "/", "", 1)))
 
     return file_list
 

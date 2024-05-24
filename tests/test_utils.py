@@ -179,6 +179,44 @@ class TestGetFileList(unittest.TestCase):
     @patch(
         "glob.glob",
         return_value=[
+            "test-data/wordpress_hacked/file1",
+            "test-data/wordpress_hacked/wp-include/test-data/wordpress_hacked/file2",
+            "test-data/wordpress_hacked/wp-content/file3",
+        ],
+    )
+    def test_get_file_list_wp_dir_double_occurrence_normal_directory(self, mock_glob):
+        # Provide a valid WordPress directory path
+        wp_dir = Path("test-data/wordpress_hacked/")
+
+        # Call the function
+        with patch.object(Path, "is_dir", return_value=False):
+            file_list = get_file_list(wp_dir)
+
+        # Assert that the file list contains the correct files
+        self.assertEqual(file_list, [PosixPath("file1"), PosixPath("wp-include/test-data/wordpress_hacked/file2")])
+
+    @patch(
+        "glob.glob",
+        return_value=[
+            "test-data/wordpress_hacked/file1",
+            "test-data/wordpress_hacked/wp-content/test-data/wordpress_hacked/file2",
+            "test-data/wordpress_hacked/wp-include/test-data/wordpress_hacked/file3",
+        ],
+    )
+    def test_get_file_list_wp_dir_double_occurrence_upload_directory(self, mock_glob):
+        # Provide a valid WordPress directory path
+        wp_dir = Path("test-data/wordpress_hacked/")
+
+        # Call the function
+        with patch.object(Path, "is_dir", return_value=False):
+            file_list = get_file_list(wp_dir, parse_wp_upload=True)
+
+        # Assert that the file list contains the correct files
+        self.assertEqual(file_list, [PosixPath("file1"), PosixPath("wp-content/test-data/wordpress_hacked/file2"), PosixPath("wp-include/test-data/wordpress_hacked/file3")])
+
+    @patch(
+        "glob.glob",
+        return_value=[
             "/path/to/wp_dir/file1",
             "/path/to/wp_dir/file2",
             "/path/to/wp_dir/wp-config.php",
