@@ -7,7 +7,7 @@ from click_help_colors import HelpColorsGroup
 from pyfiglet import figlet_format
 from termcolor import colored
 
-from .wordpress_comperator import LineEnding, WordPressComperator, WordPressComperatorLocal, WordPressComperatorWeb
+from .wp_comperator import LineEnding, WordPressComperator, WordPressComperatorLocal, WordPressComperatorWeb
 
 
 @click.group(
