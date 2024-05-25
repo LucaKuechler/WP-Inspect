@@ -119,35 +119,21 @@ def get_file_list(wp_dir: Path, *, parse_wp_upload: bool = False) -> list[Path]:
     return file_list
 
 
-def is_file_binary(filename: Path) -> bool:
+def is_file_odd_looking(filename: Path) -> bool:
     """
-    Check if a file is binary.
+    Check if a file is odd locking.
 
     :param filename: Name of the file.
-    :return: True if the file is binary, False otherwise.
+    :return: True if the file is odd, False otherwise.
     """
-    if filename.is_file() is False:
-        return True
+    # get mime type for the given file to determine its filetype
+    mime = get_mime_type(filename)
 
-    png_mn = bytearray([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
-    gif_mn = bytearray([0x47, 0x49, 0x46])
-    jpeg_mn = bytearray([0xFF, 0xD8])
-    header = bytearray()
-
-    with filename.open("rb") as f:
-        for _ in range(8):
-            d = f.read(1)
-            if len(d) > 0:
-                header.append(ord(d))
-
-    if header == png_mn:  # noqa: SIM114
-        return True
-    elif header[:3] == gif_mn:  # noqa: RET505, SIM114
-        return True
-    elif header[:2] == jpeg_mn:  # noqa: SIM103
-        return True
-    else:
+    # if a file has this mime type it is unlikely to be dangerous
+    if "image" in mime or "font" in mime:
         return False
+
+    return True
 
 
 def is_file_ok(wp_backup_dir: Path, wp_relative_filepath: Path) -> tuple[Path, bool]:

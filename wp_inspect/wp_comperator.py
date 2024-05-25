@@ -22,7 +22,7 @@ from .utils import (
     get_file_list,
     get_mime_type,
     get_timestamps_from_file,
-    is_file_binary,
+    is_file_odd_looking,
     is_file_ok,
     validate_wordpress_path,
 )
@@ -301,7 +301,7 @@ class WordPressComperatorWeb(WordPressComperator):
             # calculate file hash from hacked file
             vt = generate_virustotal_url(Path(target_file))
 
-            if not is_file_binary(target_file):
+            if is_file_odd_looking(target_file):
                 self.binary.append(
                     OutputRow(fp=target_file, lwt=lwt, lat=lat, ct=ct, vt=vt, mime=mime),
                 )
@@ -407,7 +407,7 @@ class WordPressComperatorLocal(WordPressComperator):
             # exclude extensions that are most likly not dangerous
             if not self.full:
                 lower_file_extension = absolute_path.suffix.lower()
-                if lower_file_extension in [".png", ".jpg", ".log", ".pdf"]:
+                if lower_file_extension in [".log", ".pdf"]:
                     continue
 
             # check if file exists and return filepath for backup
