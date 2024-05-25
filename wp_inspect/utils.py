@@ -10,9 +10,13 @@ import magic
 
 
 def get_mime_type(filepath: Path) -> str:
-    """Check if a file is binary using python-magic."""
-    mime = magic.from_file(filepath, mime=True)
-    return mime
+    """
+    Return the mimetype of a given filepath.
+
+    :param filepath: Filepath to determine the mimetype.
+    :return: Returns the mimetype of a given filepath.
+    """
+    return magic.from_file(filepath, mime=True)
 
 
 def get_timestamps_from_file(filepath: Path) -> Tuple[str, str, str]:

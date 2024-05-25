@@ -4,13 +4,14 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from wp_inspect.wordpress_comperator import (WordPressComperatorLocal,
-                                             WordPressComperatorWeb)
+                                             WordPressComperatorWeb,
+                                             LineEnding)
 
 
 class TestWordPressComperatorWeb(unittest.TestCase):
 
     def setUp(self):
-        self.obj = WordPressComperatorWeb(Path())
+        self.obj = WordPressComperatorWeb(Path(), LineEnding.unix)
 
     def tearDown(self):
         # Remove the temporary directory after each test

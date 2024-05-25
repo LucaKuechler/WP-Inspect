@@ -211,14 +211,14 @@ class WordPressComperatorWeb(WordPressComperator):
         for file in wp_list_of_files:
             absolute_path = self.tmp_dir / file
 
-            # Windows does not change line endings of images so they need to be ignored.
-            if "image" in get_mime_type(absolute_path) and not "image/svg+xml" in get_mime_type(absolute_path):
+            mime = get_mime_type(absolute_path)
+
+            # Windows does not change line endings certain file types for example images or fonts.
+            if "image" in mime and "image/svg+xml" not in mime:
                 continue
 
-            if "font" in get_mime_type(absolute_path):
+            if "font" in mime:
                 continue
-
-            print("Mime of: ", file, get_mime_type(absolute_path))
 
             with open(absolute_path, "rb") as f1:
                 content = f1.read()
@@ -267,8 +267,6 @@ class WordPressComperatorWeb(WordPressComperator):
             if filecmp.cmp(absolute_path, tmp_fp):
                 continue
 
-            print("Stats abso: ", os.stat(absolute_path), absolute_path)
-            print("Stats tmp: ", os.stat(tmp_fp), tmp_fp)
             self.modified.append(
                 OutputRow(fp=absolute_path, lwt=lwt, lat=lat, ct=ct, vt=vt, mime=mime),
             )
@@ -396,7 +394,7 @@ class WordPressComperatorLocal(WordPressComperator):
                 if lower_file_extension in [".png", ".jpg", ".log", ".pdf"]:
                     continue
 
-            # ...
+            # check if file exists and return filepath for backup
             backup_fp, exists = is_file_ok(self.wp_filepath_backup, filepath)
 
             # get timestamps
@@ -405,11 +403,13 @@ class WordPressComperatorLocal(WordPressComperator):
             # calculate file hash from hacked file
             vt = generate_virustotal_url(absolute_path)
 
+            mime = get_mime_type(absolute_path)
+
             # the file does exist in the hacked wordpress files but
             # does not appear in the orignial ones than it has been
             # added by the owner or the hacker.
             if not exists:
-                self.added.append(OutputRow(fp=absolute_path, lwt=lwt, lat=lat, ct=ct, vt=vt))
+                self.added.append(OutputRow(fp=absolute_path, lwt=lwt, lat=lat, ct=ct, vt=vt, mime=mime))
                 continue
 
             # as we know file exists we should now check if they are equal
@@ -418,7 +418,7 @@ class WordPressComperatorLocal(WordPressComperator):
             if filecmp.cmp(absolute_path, backup_fp):
                 continue
 
-            self.modified.append(OutputRow(fp=absolute_path, lwt=lwt, lat=lat, ct=ct, vt=vt))
+            self.modified.append(OutputRow(fp=absolute_path, lwt=lwt, lat=lat, ct=ct, vt=vt, mime=mime))
 
     def _identify_deleted_files(self, hacked_file_list: list[Path], backup_file_list: list[Path]) -> None:
         """
@@ -438,7 +438,7 @@ class WordPressComperatorLocal(WordPressComperator):
                 if lower_file_extension in [".png", ".jpg", ".log", ".pdf"]:
                     continue
 
-            self.deleted.append(OutputRow(fp=self.wp_filepath_hacked / elem, lwt="", lat="", ct="", vt=""))
+            self.deleted.append(OutputRow(fp=self.wp_filepath_hacked / elem, lwt="", lat="", ct="", vt="", mime=""))
 
     def compare(self) -> None:
         """
