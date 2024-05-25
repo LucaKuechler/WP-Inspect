@@ -1,22 +1,18 @@
-import os
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from wp_inspect.wordpress_comperator import (WordPressComperatorLocal,
-                                             WordPressComperatorWeb,
-                                             LineEnding)
+from wp_inspect.wordpress_comperator import LineEnding, WordPressComperatorWeb
 
 
 class TestWordPressComperatorWeb(unittest.TestCase):
-
     def setUp(self):
         self.obj = WordPressComperatorWeb(Path(), LineEnding.unix)
 
     def tearDown(self):
         # Remove the temporary directory after each test
         if hasattr(self, "tmp_dir"):
-            os.rmdir(self.tmp_dir)
+            Path.rmdir(self.tmp_dir)
 
     def test_tmp_create(self):
         # Call the method to create the temporary directory
@@ -47,9 +43,7 @@ class TestWordPressComperatorWeb(unittest.TestCase):
         result = self.obj._download_wp()
 
         # Check if requests.get is called with the correct URL
-        mock_get.assert_called_once_with(
-            "https://en.wordpress.org/wordpress-5.8-en.tar.gz", stream=True
-        )
+        mock_get.assert_called_once_with("https://en.wordpress.org/wordpress-5.8-en.tar.gz", stream=True)
 
         # Check if the method returns the response data
         self.assertEqual(result, mock_response)
@@ -70,9 +64,7 @@ class TestWordPressComperatorWeb(unittest.TestCase):
         result = self.obj._download_wp()
 
         # Check if requests.get is called with the correct URL
-        mock_get.assert_called_once_with(
-            "https://wordpress.org/wordpress-5.8.tar.gz", stream=True
-        )
+        mock_get.assert_called_once_with("https://wordpress.org/wordpress-5.8.tar.gz", stream=True)
 
         # Check if the method returns the response data
         self.assertEqual(result, mock_response)
