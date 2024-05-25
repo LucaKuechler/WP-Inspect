@@ -1,17 +1,31 @@
+from __future__ import annotations
+
 import filecmp
-import os
 import shutil
+import sys
 import tarfile
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import requests
+
+if TYPE_CHECKING:
+    from requests.models import Response
+
 from rich import print
 
-from .utils import *
+from .utils import (
+    generate_virustotal_url,
+    get_file_list,
+    get_mime_type,
+    get_timestamps_from_file,
+    is_file_binary,
+    is_file_ok,
+    validate_wordpress_path,
+)
 
 
 class LineEnding(Enum):
@@ -42,14 +56,12 @@ class WordPressComperator(ABC):
         """
         Compare method holds logik for comparing WordPress installations.
         """
-        pass
 
     @abstractmethod
     def validate_paths(self) -> None:
         """
         Validate paths method to validate paths of WordPress installations.
         """
-        pass
 
     @abstractmethod
     def export(self, filepath: Path) -> None:
@@ -58,14 +70,12 @@ class WordPressComperator(ABC):
 
         :param filepath: The filepath to export the results.
         """
-        pass
 
     @abstractmethod
     def show(self) -> None:
         """
         Show method to display comparison results.
         """
-        pass
 
 
 class WordPressComperatorWeb(WordPressComperator):
@@ -95,7 +105,7 @@ class WordPressComperatorWeb(WordPressComperator):
 
         :param filepath: The filepath to export the results.
         """
-        with open(filepath, "w") as file:
+        with filepath.open("w") as file:
             file.write(
                 "Action,File,CreationTime,LastWriteTime,LastAccessTime,VirusTotal,MimeType\n",
             )
@@ -142,10 +152,10 @@ class WordPressComperatorWeb(WordPressComperator):
         self.wp_version, self.wp_language = validate_wordpress_path(self.wp_filepath_hacked)
 
         if self.wp_version == "":
-            print("The given WordPress Path [red]({})[/red] is not valid.".format(self.wp_filepath_hacked))
-            exit(-1)
+            print(f"The given WordPress Path [red]({self.wp_filepath_hacked})[/red] is not valid.")
+            sys.exit(-1)
 
-        print(":repeat_button: WP-Version: {} \n\n".format(self.wp_version))
+        print(f":repeat_button: WP-Version: {self.wp_version} \n\n")
 
     def _tmp_create(self) -> Path:
         """
@@ -153,20 +163,19 @@ class WordPressComperatorWeb(WordPressComperator):
 
         :return: The path of the created temporary directory.
         """
-        tmp_path = Path("/tmp")
+        tmp_path = Path("/tmp")  # noqa: S108
 
         if not tmp_path.is_dir():
-            exit(-1)
+            sys.exit(-1)
 
-        current_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        current_timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
 
-        new_tmp_folder = tmp_path.joinpath("wp_forensics__{}".format(current_timestamp))
-
-        os.mkdir(new_tmp_folder)
+        new_tmp_folder = tmp_path.joinpath(f"wp_forensics__{current_timestamp}")
+        new_tmp_folder.mkdir()
 
         return new_tmp_folder
 
-    def _download_wp(self) -> Any:
+    def _download_wp(self) -> Response:
         """
         Helper method to download the WordPress installation files.
 
@@ -179,24 +188,23 @@ class WordPressComperatorWeb(WordPressComperator):
         else:
             wp_url = f"https://wordpress.org/wordpress-{self.wp_version}.tar.gz"
 
-        response_data = requests.get(wp_url, stream=True)
-        return response_data
+        return requests.get(wp_url, stream=True, timeout=10)
 
-    def _extract_wp_archive(self, response_data: Any) -> None:
+    def _extract_wp_archive(self, response_data: Response) -> None:
         """
         Helper method to extract the WordPress archive.
 
         :param response_data: The downloaded WordPress installation files.
         """
         tar_path = self.tmp_dir.joinpath("download.tar.gz")
-        with open(tar_path, "wb") as fp:
+        with tar_path.open("wb") as fp:
             shutil.copyfileobj(response_data.raw, fp)
 
         tar = tarfile.open(tar_path)
-        tar.extractall(self.tmp_dir)
+        tar.extractall(self.tmp_dir)  # noqa: S202
         tar.close()
 
-        os.remove(tar_path)
+        tar_path.unlink()
 
     def _convert_line_ending_of_wp_files(self, wp_list_of_files: list[Path]) -> None:
         """
@@ -220,13 +228,13 @@ class WordPressComperatorWeb(WordPressComperator):
             if "font" in mime:
                 continue
 
-            with open(absolute_path, "rb") as f1:
+            with absolute_path.open("rb") as f1:
                 content = f1.read()
 
             converted_content = content.replace(windows_line_ending, unix_line_ending)
             converted_content = converted_content.replace(unix_line_ending, windows_line_ending)
 
-            with open(absolute_path, "wb") as f2:
+            with absolute_path.open("wb") as f2:
                 f2.write(converted_content)
 
     def _identify_added_and_modified_files(self, wp_file_list: list[Path]) -> None:
@@ -272,7 +280,15 @@ class WordPressComperatorWeb(WordPressComperator):
             )
 
     def _identify_odd_looking_files(self, wp_upload_dir: Path, upload_file_list: list[Path]) -> None:
-        """ """
+        """
+        Identify unusual files in the WordPress user upload folder. These files
+        might have mismatched MIME types and file extensions, or they could be
+        files that are not typically found in the upload folder, such as PHP
+        scripts.
+
+        :param wp_upload_dir: Path to the wordpress upload direcoty used to create the absolut path.
+        :param upload_file_list: A list of relative filepaths for every file inside the wordpress upload directory.
+        """
         for up_file in upload_file_list:
             target_file = wp_upload_dir / up_file
 
@@ -327,7 +343,7 @@ class WordPressComperatorWeb(WordPressComperator):
 
         # define path for upload directory in wordpress
         wp_upload_dir = self.wp_filepath_hacked.joinpath("wp-content/uploads")
-        upload_file_list = get_file_list(wp_upload_dir, True)
+        upload_file_list = get_file_list(wp_upload_dir, parse_wp_upload=True)
 
         # the upload dir is special as the normal behavior is that people add files.
         # because the webfiles do not contain the user uploaded files, we do not check.
@@ -340,7 +356,7 @@ class WordPressComperatorLocal(WordPressComperator):
     Concrete implementation of WordPress comparator for comparing a hacked WordPress installation with a backup.
     """
 
-    def __init__(self, wp_filepath_hacked: Path, wp_filepath_backup: Path, full: bool) -> None:
+    def __init__(self, wp_filepath_hacked: Path, wp_filepath_backup: Path, *, full: bool) -> None:
         """
         Constructor method.
 
@@ -363,19 +379,19 @@ class WordPressComperatorLocal(WordPressComperator):
         v2, l2 = validate_wordpress_path(self.wp_filepath_backup)
 
         if v1 == "":
-            print("The given WordPress Path [red]({})[/red] is not valid.".format(self.wp_filepath_hacked))
-            exit(-1)
+            print(f"The given WordPress Path [red]({self.wp_filepath_hacked})[/red] is not valid.")
+            sys.exit(-1)
 
         if v2 == "":
-            print("The given WordPress Path [red]({})[/red] is not valid.".format(self.wp_filepath_backup))
-            exit(-1)
+            print(f"The given WordPress Path [red]({self.wp_filepath_backup})[/red] is not valid.")
+            sys.exit(-1)
 
-        print(":repeat_button: WP-Version Hacked: {}".format(v1))
-        print(":repeat_button: WP-Version Backup: {} \n\n".format(v2))
+        print(f":repeat_button: WP-Version Hacked: {v1}")
+        print(f":repeat_button: WP-Version Backup: {v2} \n\n")
 
         if v1 != v2 or l1 != l2:
-            print("Languages do not match.".format(self.wp_filepath_backup))
-            exit(-1)
+            print("Languages do not match.")
+            sys.exit(-1)
 
     def _identify_added_and_modified_files(self, wp_file_list: list[Path]) -> None:
         """
@@ -428,8 +444,8 @@ class WordPressComperatorLocal(WordPressComperator):
         :param hacked_file_list: List of WordPress files.
         :param backup_file_list: List of WordPress files.
         """
-        s1 = {fp for fp in hacked_file_list}
-        s2 = {fp for fp in backup_file_list}
+        s1 = set(hacked_file_list)
+        s2 = set(backup_file_list)
 
         for elem in list(s2 - s1):
             # exclude extensions that are most likly not dangerous
@@ -453,10 +469,10 @@ class WordPressComperatorLocal(WordPressComperator):
         """
 
         # get all files from hacked wordpress directory.
-        hacked_file_list: list[Path] = get_file_list(self.wp_filepath_hacked, True)
+        hacked_file_list: list[Path] = get_file_list(self.wp_filepath_hacked, parse_wp_upload=True)
 
         # get all files from backup wordpress directory.
-        backup_file_list: list[Path] = get_file_list(self.wp_filepath_backup, True)
+        backup_file_list: list[Path] = get_file_list(self.wp_filepath_backup, parse_wp_upload=True)
 
         # Check for each WordPress file in the hacked directory if it is also
         # present in the Backup Version. Identifiy if the file has been changed
@@ -472,7 +488,7 @@ class WordPressComperatorLocal(WordPressComperator):
 
         :param filepath: The filepath to export the results.
         """
-        with open(filepath, "w") as file:
+        with filepath.open("w") as file:
             file.write("Action,File,CreationTime,LastWriteTime,LastAccessTime,VirusTotal\n")
 
             for added in self.added:
