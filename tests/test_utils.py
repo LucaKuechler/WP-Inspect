@@ -1,7 +1,7 @@
 import hashlib
 import unittest
 from pathlib import Path, PosixPath
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 from wp_inspect.utils import (
     generate_virustotal_url,
@@ -22,14 +22,14 @@ class TestValidateWordPressPath(unittest.TestCase):
         wp_path = Path("/path/to/wp")
 
         # Create a temporary directory with WordPress files
-        with patch("builtins.open", mock_open(read_data=data)) as mock_file:  # noqa: SIM117
+        with patch("pathlib.Path.open", mock_open(read_data=data)) as mock_file:  # noqa: SIM117
             with patch.object(Path, "is_file", return_value=True):
                 with patch.object(Path, "is_dir", return_value=True):
                     # Provide the path to the temporary directory
                     wp_version, wp_language = validate_wordpress_path(wp_path)
 
         # Asset that the opened path include version.php as read only.
-        mock_file.assert_called_with(PosixPath("/path/to/wp/wp-includes/version.php"), "r")
+        mock_file.assert_called_with("r")
 
         # Assert that the returned values are correct
         self.assertEqual(wp_version, "6.5.2")  # Assuming version 5.8 is found in version.php
@@ -43,14 +43,14 @@ class TestValidateWordPressPath(unittest.TestCase):
         wp_path = Path("/path/to/wp")
 
         # Create a temporary directory with WordPress files
-        with patch("builtins.open", mock_open(read_data=data)) as mock_file:  # noqa: SIM117
+        with patch("pathlib.Path.open", mock_open(read_data=data)) as mock_file:  # noqa: SIM117
             with patch.object(Path, "is_file", return_value=True):
                 with patch.object(Path, "is_dir", return_value=True):
                     # Provide the path to the temporary directory
                     wp_version, wp_language = validate_wordpress_path(wp_path)
 
         # Asset that the opened path include version.php as read only.
-        mock_file.assert_called_with(PosixPath("/path/to/wp/wp-includes/version.php"), "r")
+        mock_file.assert_called_with("r")
 
         # Assert that the returned values are correct
         self.assertEqual(wp_version, "6.5.2")  # Assuming version 5.8 is found in version.php
@@ -81,7 +81,7 @@ class TestValidateWordPressPath(unittest.TestCase):
 
 
 class TestGenerateVirusTotalURL(unittest.TestCase):
-    @patch("builtins.open", new_callable=mock_open, read_data=b"file_data")
+    @patch("pathlib.Path.open", new_callable=mock_open, read_data=b"file_data")
     def test_generate_url_with_existing_file(self, mock_open):
         # Call the function
         with patch.object(Path, "is_file", return_value=True):
@@ -93,7 +93,7 @@ class TestGenerateVirusTotalURL(unittest.TestCase):
         expected_hash = hash_md5.hexdigest()
 
         # Assert that correct file is opened with right permissions.
-        mock_open.assert_called_with(PosixPath("/path/to/existing/file"), "rb")
+        mock_open.assert_called_with("rb")
 
         # Assert that the URL is generated correctly
         self.assertEqual(url, f"https://www.virustotal.com/gui/file/{expected_hash}")
@@ -108,21 +108,24 @@ class TestGenerateVirusTotalURL(unittest.TestCase):
 
 
 class TestGetTimestampsFromFile(unittest.TestCase):
-    @patch("os.path.getmtime", return_value=1619739840.0)
-    @patch("os.path.getatime", return_value=1619739840.0)
-    @patch("os.path.getctime", return_value=1619739840.0)
-    def test_get_timestamps_from_existing_file(self, *_):
+    def test_get_timestamps_from_existing_file(self, *mock_stat):
         # Provide a valid file path
         filepath = Path("/path/to/existing/file")
 
+        mock_stat = MagicMock()
+        mock_stat.st_mtime = 1619739840.0
+        mock_stat.st_atime = 1619739840.0
+        mock_stat.st_ctime = 1619739840.0
+
         # Call the function
-        with patch.object(Path, "is_file", return_value=True):
-            lwt, lat, ct = get_timestamps_from_file(filepath)
+        with patch.object(Path, "is_file", return_value=True):  # noqa: SIM117
+            with patch.object(Path, "stat", return_value=mock_stat):
+                lwt, lat, ct = get_timestamps_from_file(filepath)
 
         # Assert that the timestamps are correct
-        self.assertEqual(lwt, "2021-04-30 01:44:00")
-        self.assertEqual(lat, "2021-04-30 01:44:00")
-        self.assertEqual(ct, "2021-04-30 01:44:00")
+        self.assertEqual(lwt, "2021-04-29 23:44:00")
+        self.assertEqual(lat, "2021-04-29 23:44:00")
+        self.assertEqual(ct, "2021-04-29 23:44:00")
 
     def test_get_timestamps_from_nonexistent_file(self):
         # Provide a non-existent file path

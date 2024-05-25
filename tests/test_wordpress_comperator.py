@@ -43,7 +43,7 @@ class TestWordPressComperatorWeb(unittest.TestCase):
         result = self.obj._download_wp()
 
         # Check if requests.get is called with the correct URL
-        mock_get.assert_called_once_with("https://en.wordpress.org/wordpress-5.8-en.tar.gz", stream=True)
+        mock_get.assert_called_once_with("https://en.wordpress.org/wordpress-5.8-en.tar.gz", stream=True, timeout=10)
 
         # Check if the method returns the response data
         self.assertEqual(result, mock_response)
@@ -64,7 +64,7 @@ class TestWordPressComperatorWeb(unittest.TestCase):
         result = self.obj._download_wp()
 
         # Check if requests.get is called with the correct URL
-        mock_get.assert_called_once_with("https://wordpress.org/wordpress-5.8.tar.gz", stream=True)
+        mock_get.assert_called_once_with("https://wordpress.org/wordpress-5.8.tar.gz", stream=True, timeout=10)
 
         # Check if the method returns the response data
         self.assertEqual(result, mock_response)
