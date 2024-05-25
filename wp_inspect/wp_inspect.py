@@ -8,8 +8,8 @@ from termcolor import colored
 
 from .wordpress_comperator import (WordPressComperator,
                                    WordPressComperatorLocal,
-                                   WordPressComperatorWeb)
-
+                                   WordPressComperatorWeb,
+                                   LineEnding)
 
 @click.group(
     cls=HelpColorsGroup,
@@ -40,11 +40,12 @@ def run_comparison(wpc: WordPressComperator, outpath: Optional[Path]):
 @cli.command()
 @click.argument("wordpress", type=Path)
 @click.option("--csv", type=Path, default=None, help="Specify the output filepath.")
-def web(wordpress: Path, csv: Optional[Path]):
+@click.option("--le", type=LineEnding, default=LineEnding.unix, help="Define the line ending used in the hacked wordpress files. [Default: Unix]")
+def web(wordpress: Path, csv: Optional[Path], le: LineEnding):
     """
     Run comparison against the internet source code.
     """
-    wpc = WordPressComperatorWeb(wp_filepath_hacked=wordpress)
+    wpc = WordPressComperatorWeb(wp_filepath_hacked=wordpress, line_ending=le)
     run_comparison(wpc, csv)
 
 

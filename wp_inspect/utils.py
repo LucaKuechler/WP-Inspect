@@ -6,6 +6,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Tuple
 
+import magic
+
+
+def get_mime_type(filepath: Path) -> str:
+    """
+    Return the mimetype of a given filepath.
+
+    :param filepath: Filepath to determine the mimetype.
+    :return: Returns the mimetype of a given filepath.
+    """
+    return magic.from_file(filepath, mime=True)
+
 
 def get_timestamps_from_file(filepath: Path) -> Tuple[str, str, str]:
     """
@@ -69,9 +81,7 @@ def validate_wordpress_path(path: Path) -> Tuple[str, str]:
             if match_version:
                 version = match_version.group(1)
 
-            match_language = re.search(
-                r'\$wp_local_package\s*=\s*[\'"]([^\'"]+)[\'"]', line
-            )
+            match_language = re.search(r'\$wp_local_package\s*=\s*[\'"]([^\'"]+)[\'"]', line)
             if match_language:
                 language = match_language.group(1)
 
@@ -92,7 +102,6 @@ def get_file_list(wp_dir: Path, parse_wp_upload=False) -> list[Path]:
     file_abs_list = glob.glob(str(wp_dir) + "/**", recursive=True)
     file_list = []
     for file_abs_path in file_abs_list:
-
         if Path(file_abs_path).is_dir():
             continue
 
