@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 import glob
 import hashlib
-import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Tuple
 
 import magic
 
@@ -19,7 +19,7 @@ def get_mime_type(filepath: Path) -> str:
     return magic.from_file(filepath, mime=True)
 
 
-def get_timestamps_from_file(filepath: Path) -> Tuple[str, str, str]:
+def get_timestamps_from_file(filepath: Path) -> tuple[str, str, str]:
     """
     Get timestamps (last modified time, last accessed time, creation time) of a file.
 
@@ -30,9 +30,10 @@ def get_timestamps_from_file(filepath: Path) -> Tuple[str, str, str]:
         return "", "", ""
 
     frmt = "%Y-%m-%d %H:%M:%S"
-    lwt = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime(frmt)
-    lat = datetime.fromtimestamp(os.path.getatime(filepath)).strftime(frmt)
-    ct = datetime.fromtimestamp(os.path.getctime(filepath)).strftime(frmt)
+    lwt = datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc).strftime(frmt)
+    lat = datetime.fromtimestamp(filepath.stat().st_atime, tz=timezone.utc).strftime(frmt)
+    ct = datetime.fromtimestamp(filepath.stat().st_ctime, tz=timezone.utc).strftime(frmt)
+
     return lwt, lat, ct
 
 
@@ -46,16 +47,15 @@ def generate_virustotal_url(filepath: Path) -> str:
     if not filepath.is_file():
         return ""
 
-    hash_md5 = hashlib.md5()
-    with open(filepath, "rb") as f:
+    hash_md5 = hashlib.md5()  # noqa: S324
+    with filepath.open("rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
 
-    url = f"https://www.virustotal.com/gui/file/{hash_md5.hexdigest()}"
-    return url
+    return f"https://www.virustotal.com/gui/file/{hash_md5.hexdigest()}"
 
 
-def validate_wordpress_path(path: Path) -> Tuple[str, str]:
+def validate_wordpress_path(path: Path) -> tuple[str, str]:
     """
     Validate a WordPress installation path.
 
@@ -75,7 +75,7 @@ def validate_wordpress_path(path: Path) -> Tuple[str, str]:
     # read out version and language
     version = ""
     language = ""
-    with open(version_filepath, "r") as v_file:
+    with version_filepath.open("r") as v_file:
         for line in v_file:
             match_version = re.search(r'\$wp_version\s*=\s*[\'"]([^\'"]+)[\'"]', line)
             if match_version:
@@ -91,7 +91,7 @@ def validate_wordpress_path(path: Path) -> Tuple[str, str]:
     return version, language
 
 
-def get_file_list(wp_dir: Path, parse_wp_upload=False) -> list[Path]:
+def get_file_list(wp_dir: Path, *, parse_wp_upload: bool = False) -> list[Path]:
     """
     Get the list of files in a WordPress directory.
 
@@ -99,7 +99,8 @@ def get_file_list(wp_dir: Path, parse_wp_upload=False) -> list[Path]:
     :param parse_wp_upload: Whether to parse WordPress upload directory.
     :return: The list of files in the WordPress directory.
     """
-    file_abs_list = glob.glob(str(wp_dir) + "/**", recursive=True)
+    file_abs_list = glob.glob(str(wp_dir) + "/**", recursive=True)  # noqa: PTH207
+
     file_list = []
     for file_abs_path in file_abs_list:
         if Path(file_abs_path).is_dir():
@@ -118,14 +119,14 @@ def get_file_list(wp_dir: Path, parse_wp_upload=False) -> list[Path]:
     return file_list
 
 
-def is_file_binary(filename) -> bool:
+def is_file_binary(filename: Path) -> bool:
     """
     Check if a file is binary.
 
     :param filename: Name of the file.
     :return: True if the file is binary, False otherwise.
     """
-    if os.path.isfile(filename) is False:
+    if filename.is_file() is False:
         return True
 
     png_mn = bytearray([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
@@ -133,23 +134,23 @@ def is_file_binary(filename) -> bool:
     jpeg_mn = bytearray([0xFF, 0xD8])
     header = bytearray()
 
-    with open(filename, "rb") as f:
-        for _ in range(0, 8):
+    with filename.open("rb") as f:
+        for _ in range(8):
             d = f.read(1)
             if len(d) > 0:
                 header.append(ord(d))
 
-    if header == png_mn:
+    if header == png_mn:  # noqa: SIM114
         return True
-    elif header[:3] == gif_mn:
+    elif header[:3] == gif_mn:  # noqa: RET505, SIM114
         return True
-    elif header[:2] == jpeg_mn:
+    elif header[:2] == jpeg_mn:  # noqa: SIM103
         return True
     else:
         return False
 
 
-def is_file_ok(wp_backup_dir: Path, wp_relative_filepath: Path) -> Tuple[Path, bool]:
+def is_file_ok(wp_backup_dir: Path, wp_relative_filepath: Path) -> tuple[Path, bool]:
     """
     Helper method to check if a file is okay.
 

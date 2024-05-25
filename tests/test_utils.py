@@ -1,17 +1,19 @@
 import hashlib
 import unittest
 from pathlib import Path, PosixPath
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
-from wp_inspect.utils import (generate_virustotal_url, get_file_list,
-                              get_timestamps_from_file, is_file_ok,
-                              validate_wordpress_path)
+from wp_inspect.utils import (
+    generate_virustotal_url,
+    get_file_list,
+    get_timestamps_from_file,
+    is_file_ok,
+    validate_wordpress_path,
+)
 
 
 class TestValidateWordPressPath(unittest.TestCase):
-
     def test_valid_wordpress_path_with_language(self):
-
         data = """
         $wp_version = '6.5.2';
         $wp_local_package = 'de_DE';
@@ -20,27 +22,20 @@ class TestValidateWordPressPath(unittest.TestCase):
         wp_path = Path("/path/to/wp")
 
         # Create a temporary directory with WordPress files
-        with patch("builtins.open", mock_open(read_data=data)) as mock_file:
+        with patch("pathlib.Path.open", mock_open(read_data=data)) as mock_file:  # noqa: SIM117
             with patch.object(Path, "is_file", return_value=True):
                 with patch.object(Path, "is_dir", return_value=True):
                     # Provide the path to the temporary directory
                     wp_version, wp_language = validate_wordpress_path(wp_path)
 
         # Asset that the opened path include version.php as read only.
-        mock_file.assert_called_with(
-            PosixPath("/path/to/wp/wp-includes/version.php"), "r"
-        )
+        mock_file.assert_called_with("r")
 
         # Assert that the returned values are correct
-        self.assertEqual(
-            wp_version, "6.5.2"
-        )  # Assuming version 5.8 is found in version.php
-        self.assertEqual(
-            wp_language, "de_DE"
-        )  # Assuming language 'en' is found in version.php
+        self.assertEqual(wp_version, "6.5.2")  # Assuming version 5.8 is found in version.php
+        self.assertEqual(wp_language, "de_DE")  # Assuming language 'en' is found in version.php
 
     def test_valid_wordpress_path_without_language(self):
-
         data = """
         $wp_version = '6.5.2';
         """
@@ -48,24 +43,18 @@ class TestValidateWordPressPath(unittest.TestCase):
         wp_path = Path("/path/to/wp")
 
         # Create a temporary directory with WordPress files
-        with patch("builtins.open", mock_open(read_data=data)) as mock_file:
+        with patch("pathlib.Path.open", mock_open(read_data=data)) as mock_file:  # noqa: SIM117
             with patch.object(Path, "is_file", return_value=True):
                 with patch.object(Path, "is_dir", return_value=True):
                     # Provide the path to the temporary directory
                     wp_version, wp_language = validate_wordpress_path(wp_path)
 
         # Asset that the opened path include version.php as read only.
-        mock_file.assert_called_with(
-            PosixPath("/path/to/wp/wp-includes/version.php"), "r"
-        )
+        mock_file.assert_called_with("r")
 
         # Assert that the returned values are correct
-        self.assertEqual(
-            wp_version, "6.5.2"
-        )  # Assuming version 5.8 is found in version.php
-        self.assertEqual(
-            wp_language, ""
-        )  # Assuming language 'en' is found in version.php
+        self.assertEqual(wp_version, "6.5.2")  # Assuming version 5.8 is found in version.php
+        self.assertEqual(wp_language, "")  # Assuming language 'en' is found in version.php
 
     def test_invalid_path_not_directory(self):
         invalid_wp_path = Path("/invalid/path")
@@ -82,10 +71,9 @@ class TestValidateWordPressPath(unittest.TestCase):
         non_wp_dir = Path("/path/to/non_wordpress_directory")
 
         # Create a temporary directory without WordPress files
-        with patch.object(Path, "is_file", return_value=False):
-            with patch.object(Path, "is_dir", return_value=True):
-                # Provide the path to the temporary directory
-                wp_version, wp_language = validate_wordpress_path(non_wp_dir)
+        with patch.object(Path, "is_file", return_value=False), patch.object(Path, "is_dir", return_value=True):
+            # Provide the path to the temporary directory
+            wp_version, wp_language = validate_wordpress_path(non_wp_dir)
 
         # Assert that the returned values are empty strings
         self.assertEqual(wp_version, "")
@@ -93,10 +81,8 @@ class TestValidateWordPressPath(unittest.TestCase):
 
 
 class TestGenerateVirusTotalURL(unittest.TestCase):
-
-    @patch("builtins.open", new_callable=mock_open, read_data=b"file_data")
+    @patch("pathlib.Path.open", new_callable=mock_open, read_data=b"file_data")
     def test_generate_url_with_existing_file(self, mock_open):
-
         # Call the function
         with patch.object(Path, "is_file", return_value=True):
             url = generate_virustotal_url(Path("/path/to/existing/file"))
@@ -107,13 +93,12 @@ class TestGenerateVirusTotalURL(unittest.TestCase):
         expected_hash = hash_md5.hexdigest()
 
         # Assert that correct file is opened with right permissions.
-        mock_open.assert_called_with(PosixPath("/path/to/existing/file"), "rb")
+        mock_open.assert_called_with("rb")
 
         # Assert that the URL is generated correctly
         self.assertEqual(url, f"https://www.virustotal.com/gui/file/{expected_hash}")
 
     def test_generate_url_with_nonexistent_file(self):
-
         # Call the function
         with patch.object(Path, "is_file", return_value=False):
             url = generate_virustotal_url(Path("/path/to/nonexistent/file"))
@@ -123,22 +108,24 @@ class TestGenerateVirusTotalURL(unittest.TestCase):
 
 
 class TestGetTimestampsFromFile(unittest.TestCase):
-
-    @patch("os.path.getmtime", return_value=1619739840.0)
-    @patch("os.path.getatime", return_value=1619739840.0)
-    @patch("os.path.getctime", return_value=1619739840.0)
-    def test_get_timestamps_from_existing_file(self, *args):
+    def test_get_timestamps_from_existing_file(self, *mock_stat):
         # Provide a valid file path
         filepath = Path("/path/to/existing/file")
 
+        mock_stat = MagicMock()
+        mock_stat.st_mtime = 1619739840.0
+        mock_stat.st_atime = 1619739840.0
+        mock_stat.st_ctime = 1619739840.0
+
         # Call the function
-        with patch.object(Path, "is_file", return_value=True):
-            lwt, lat, ct = get_timestamps_from_file(filepath)
+        with patch.object(Path, "is_file", return_value=True):  # noqa: SIM117
+            with patch.object(Path, "stat", return_value=mock_stat):
+                lwt, lat, ct = get_timestamps_from_file(filepath)
 
         # Assert that the timestamps are correct
-        self.assertEqual(lwt, "2021-04-30 01:44:00")
-        self.assertEqual(lat, "2021-04-30 01:44:00")
-        self.assertEqual(ct, "2021-04-30 01:44:00")
+        self.assertEqual(lwt, "2021-04-29 23:44:00")
+        self.assertEqual(lat, "2021-04-29 23:44:00")
+        self.assertEqual(ct, "2021-04-29 23:44:00")
 
     def test_get_timestamps_from_nonexistent_file(self):
         # Provide a non-existent file path
@@ -155,7 +142,6 @@ class TestGetTimestampsFromFile(unittest.TestCase):
 
 
 class TestGetFileList(unittest.TestCase):
-
     @patch(
         "glob.glob",
         return_value=[
@@ -165,7 +151,7 @@ class TestGetFileList(unittest.TestCase):
             "/path/to/wp_dir/wp-content/file3",
         ],
     )
-    def test_get_file_list_normal_directory(self, mock_glob):
+    def test_get_file_list_normal_directory(self, *_):
         # Provide a valid WordPress directory path
         wp_dir = Path("/path/to/wp_dir")
 
@@ -184,7 +170,7 @@ class TestGetFileList(unittest.TestCase):
             "test-data/wordpress_hacked/wp-content/file3",
         ],
     )
-    def test_get_file_list_wp_dir_double_occurrence_normal_directory(self, mock_glob):
+    def test_get_file_list_wp_dir_double_occurrence_normal_directory(self, *_):
         # Provide a valid WordPress directory path
         wp_dir = Path("test-data/wordpress_hacked/")
 
@@ -203,7 +189,7 @@ class TestGetFileList(unittest.TestCase):
             "test-data/wordpress_hacked/wp-include/test-data/wordpress_hacked/file3",
         ],
     )
-    def test_get_file_list_wp_dir_double_occurrence_upload_directory(self, mock_glob):
+    def test_get_file_list_wp_dir_double_occurrence_upload_directory(self, *_):
         # Provide a valid WordPress directory path
         wp_dir = Path("test-data/wordpress_hacked/")
 
@@ -212,7 +198,14 @@ class TestGetFileList(unittest.TestCase):
             file_list = get_file_list(wp_dir, parse_wp_upload=True)
 
         # Assert that the file list contains the correct files
-        self.assertEqual(file_list, [PosixPath("file1"), PosixPath("wp-content/test-data/wordpress_hacked/file2"), PosixPath("wp-include/test-data/wordpress_hacked/file3")])
+        self.assertEqual(
+            file_list,
+            [
+                PosixPath("file1"),
+                PosixPath("wp-content/test-data/wordpress_hacked/file2"),
+                PosixPath("wp-include/test-data/wordpress_hacked/file3"),
+            ],
+        )
 
     @patch(
         "glob.glob",
@@ -223,7 +216,7 @@ class TestGetFileList(unittest.TestCase):
             "/path/to/wp_dir/wp-content/file3",
         ],
     )
-    def test_get_file_list_with_parse_wp_upload(self, mock_glob):
+    def test_get_file_list_with_parse_wp_upload(self, *_):
         # Provide a valid WordPress directory path
         wp_dir = Path("/path/to/wp_dir")
 
@@ -238,7 +231,7 @@ class TestGetFileList(unittest.TestCase):
         )
 
     @patch("glob.glob", return_value=[])
-    def test_get_file_list_empty_dir(self, mock_glob):
+    def test_get_file_list_empty_dir(self, *_):
         # Provide a non-existent directory path
         wp_dir = Path("/path/to/nonexistent/dir")
 
@@ -251,7 +244,6 @@ class TestGetFileList(unittest.TestCase):
 
 
 class TestIsFileOk(unittest.TestCase):
-
     def test_file_exists(self):
         # Define test data
         wp_backup_dir = Path("/tmp/wordpress/")
