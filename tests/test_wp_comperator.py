@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from wp_inspect.wordpress_comperator import LineEnding, WordPressComperatorWeb
+from wp_inspect.wp_comperator import LineEnding, WordPressComperatorWeb
 
 
 class TestWordPressComperatorWeb(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestWordPressComperatorWeb(unittest.TestCase):
         # Store the created temporary directory for cleanup in tearDown
         self.tmp_dir = tmp_dir
 
-    @patch("wp_inspect.wordpress_comperator.requests.get")
+    @patch("wp_inspect.wp_comperator.requests.get")
     def test_download_wp_with_language(self, mock_get):
         # Set up the mock response data
         mock_response = MagicMock()
@@ -48,7 +48,7 @@ class TestWordPressComperatorWeb(unittest.TestCase):
         # Check if the method returns the response data
         self.assertEqual(result, mock_response)
 
-    @patch("wp_inspect.wordpress_comperator.requests.get")
+    @patch("wp_inspect.wp_comperator.requests.get")
     def test_download_wp_without_language(self, mock_get):
         # Set up the mock response data
         mock_response = MagicMock()
